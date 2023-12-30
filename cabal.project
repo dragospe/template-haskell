@@ -3,3 +3,5 @@ packages:
 
 package PKGNAME
   tests: True
+
+test-show-details: direct

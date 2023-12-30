@@ -1,10 +1,12 @@
 {
+  # templated from https://github.com/jonascarpay/template-haskell
   description = "PKGNAME";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/release-23.11";
+  inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/release-23.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  outputs = inputs:
+  outputs = inputs@{ self, pre-commit-hooks, ... }:
     let
       overlay = final: prev: {
         haskell = prev.haskell // {
@@ -21,14 +23,50 @@
           hspkgs = pkgs.haskellPackages;
         in
         {
+          checks = {
+            pre-commit-check = pre-commit-hooks.lib.${system}.run {
+              src = ./.;
+              hooks = {
+
+                # Nix
+                nixpkgs-fmt.enable = true;
+                statix.enable = true;
+                deadnix.enable = true;
+
+                # Haskell
+                hlint.enable = true;
+                fourmolu.enable = true;
+                cabal-fmt.enable = true;
+                #stan.enable = true; Broken, as of 2023-12-30
+
+                # Other
+                typos = { enable = true; };
+              };
+
+            };
+          };
+
           devShell = hspkgs.shellFor {
+            inherit (self.checks.${system}.pre-commit-check) shellHook;
             withHoogle = true;
             packages = p: [ p.PKGNAME ];
             buildInputs = [
-              hspkgs.cabal-install
-              hspkgs.haskell-language-server
-              hspkgs.hlint
-              hspkgs.ormolu
+              # Haskell
+              hspkgs.cabal-install # the bog-standard "cabal" command
+              hspkgs.cabal-fmt # cabal formatter
+              hspkgs.haskell-language-server # LSP
+              hspkgs.hlint # linter for haskell code
+              hspkgs.apply-refact # automatic refactorings, ties in with hlint
+              hspkgs.fourmolu # formatter for haskell code
+              hspkgs.zlib # Needed for... reasons. Google "zlib haskell nix"
+              #hspkgs.stan # Broken, as of 2023-12-30
+
+              # Nix
+              pkgs.deadnix # Dead code analysis for nix
+              pkgs.statix # static analysis for nix
+              pkgs.nixpkgs-fmt # formatting for nix
+
+              # Shell
               pkgs.bashInteractive
             ];
           };

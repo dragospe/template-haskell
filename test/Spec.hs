@@ -1,8 +1,5 @@
-import Test.Hspec
+import Prelude
 
 main :: IO ()
 main =
-  hspec $
-    describe "PKGNAME-test" $
-      it "works" $
-        2 + 2 `shouldBe` (4 :: Int)
+  putStrLn "hi"
